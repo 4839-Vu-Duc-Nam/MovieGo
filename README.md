@@ -1,4 +1,4 @@
-# MovieGo
+﻿# MovieGo
 
 ASP.NET Core MVC ticket-booking sample for the SQL Server schema in `MovieGo.sql`.
 
@@ -67,3 +67,5 @@ Additional film metadata references:
 - [How to Train Your Dragon (2025)](https://en.wikipedia.org/wiki/How_to_Train_Your_Dragon_(2025_film))
 - [Superman (2025)](https://en.wikipedia.org/wiki/Superman_(2025_film))
 - [F1](https://en.wikipedia.org/wiki/F1_(film))
+=======
+# MovieGo
