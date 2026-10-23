@@ -1,0 +1,141 @@
+@model MovieGoApp.Models.BookingPageModel
+@{
+    ViewData["Title"] = "Chọn ghế";
+    var selectedSeats = ViewData["SelectedSeats"] as List<string> ?? [];
+    var selectedPayment = ViewData["SelectedPaymentMethod"] as string;
+    var acceptedSeparatedSeats = ViewData["AcceptSeparatedSeats"] is bool accepted && accepted;
+    var tierPrices = Model.Seats
+        .GroupBy(seat => seat.Type)
+        .ToDictionary(group => group.Key, group => group.First().Price);
+}
+
+<p class="eyebrow">ĐẶT VÉ · @Model.Showtime.Id</p>
+<h1>@Model.Showtime.MovieTitle</h1>
+<p class="muted mb-4">@Model.Showtime.StartsAt.ToString("dddd, dd/MM/yyyy · HH:mm") · @Model.Showtime.RoomName · chọn tối đa 8 ghế</p>
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+<form asp-action="Create" method="post">
+    <input type="hidden" name="ShowtimeId" value="@Model.Showtime.Id" />
+    <div class="booking-layout">
+        <section class="seat-panel">
+            <div class="screen-label">MÀN HÌNH</div>
+            <div class="screen-curve"></div>
+            <div class="seat-legend">
+                @foreach (var tier in tierPrices)
+                {
+                    var tierClass = tier.Key.Contains("VIP", StringComparison.OrdinalIgnoreCase)
+                        ? "vip" : tier.Key == "Đôi" ? "couple" : "available";
+                    <span><i class="seat-dot @tierClass"></i> @tier.Key · @tier.Value.ToString("N0") ₫/ghế</span>
+                }
+                <span><i class="seat-dot selected"></i> Đang chọn</span>
+                <span><i class="seat-dot taken"></i> Đã giữ/bán</span>
+                @if (Model.Seats.Any(seat => seat.IsRestricted))
+                {
+                    <span><i class="seat-dot restricted"></i> Khóa theo chính sách suất vắng</span>
+                }
+            </div>
+            <div class="seat-map">
+                @foreach (var row in Model.Seats.GroupBy(seat => seat.Row).OrderBy(group => group.Key))
+                {
+                    <div class="seat-row">
+                        <span class="seat-row-label">@row.Key</span>
+                        <div class="seat-row-items">
+                            @foreach (var seat in row.OrderBy(seat => seat.Number))
+                            {
+                                var checkedSeat = selectedSeats.Contains(seat.Id);
+                                var seatClass = seat.Type.Contains("VIP", StringComparison.OrdinalIgnoreCase)
+                                    ? "seat-vip"
+                                    : seat.Type == "Đôi" ? "seat-couple" : "";
+                                <label class="seat @seatClass @(seat.IsRestricted ? "seat-restricted" : seat.IsAvailable ? "" : "seat-unavailable") @(checkedSeat ? "seat-selected" : "")"
+                                       title="@(seat.IsRestricted ? "Tạm khóa theo chính sách suất vắng" : $"{seat.Type} · {seat.Row}{seat.Number} · {seat.Price:N0} ₫")">
+                                    @if (seat.IsAvailable)
+                                    {
+                                        <input type="checkbox" name="SeatIds" value="@seat.Id" checked="@checkedSeat"
+                                               data-seat-type="@seat.Type" data-row="@seat.Row" data-number="@seat.Number"
+                                               data-price="@seat.Price.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+                                        <span>@seat.Number</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@seat.Number</span>
+                                    }
+                                </label>
+                            }
+                        </div>
+                        <span class="seat-row-label">@row.Key</span>
+                    </div>
+                }
+            </div>
+            <p class="small muted mb-0">Không để lại một ghế đơn ở giữa hoặc hai đầu hàng. Hai đầu hàng được xem là cạnh lối đi.</p>
+        </section>
+        <aside class="checkout-panel">
+            <h2>Thông tin đặt vé</h2>
+            <p class="small muted">Hóa đơn sẽ được lưu vào tài khoản đang đăng nhập.</p>
+            <label class="form-label" for="PaymentMethodId">Thanh toán</label>
+            <select class="form-select mb-3" id="PaymentMethodId" name="PaymentMethodId" required>
+                <option value="">Chọn hình thức thanh toán</option>
+                @foreach (var method in Model.PaymentMethods)
+                {
+                    <option value="@method.Id" selected="@(method.Id == selectedPayment)">@method.Name</option>
+                }
+            </select>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="AcceptSeparatedSeats" value="true" id="AcceptSeparatedSeats" checked="@acceptedSeparatedSeats" />
+                <label class="form-check-label small" for="AcceptSeparatedSeats">Tôi đồng ý chọn ghế rời nếu không còn cụm ghế liền nhau phù hợp.</label>
+            </div>
+            <p class="small muted">Đã chọn: <strong id="selectedSeatCount">0 ghế</strong></p>
+            <p class="small muted">Ghế được giữ tối đa 10 phút. Thanh toán ở bước tiếp theo là mô phỏng, không kết nối ngân hàng.</p>
+            <button class="btn btn-primary w-100 btn-lg" type="submit">Giữ ghế &amp; tiếp tục</button>
+        </aside>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        const seatInputs = document.querySelectorAll('.seat input');
+        const count = document.getElementById('selectedSeatCount');
+        function updateSeatCount() {
+            const selected = [...seatInputs].filter(input => input.checked).length;
+            const total = [...seatInputs].filter(input => input.checked)
+                .reduce((sum, input) => sum + Number(input.dataset.price), 0);
+            count.textContent = `${selected} ghế · ${total.toLocaleString('vi-VN')} ₫`;
+        }
+        function selectCouplePartner(input) {
+            if (input.dataset.seatType !== 'Đôi') return;
+            const partnerNumber = Number(input.dataset.number) % 2 === 1
+                ? Number(input.dataset.number) + 1 : Number(input.dataset.number) - 1;
+            const partner = [...seatInputs].find(candidate =>
+                candidate.dataset.row === input.dataset.row
+                && Number(candidate.dataset.number) === partnerNumber);
+            if (input.checked && (!partner || !partner.disabled)) {
+                if (!partner) {
+                    input.checked = false;
+                    alert('Ghế đôi phải có đủ hai ghế liền nhau.');
+                    return;
+                }
+                if ([...seatInputs].filter(candidate => candidate.checked).length > 7) {
+                    input.checked = false;
+                    partner.checked = false;
+                    alert('Mỗi giao dịch được chọn tối đa 8 ghế.');
+                    return;
+                }
+                partner.checked = true;
+                partner.closest('.seat').classList.add('seat-selected');
+            } else if (!input.checked && partner) {
+                partner.checked = false;
+                partner.closest('.seat').classList.remove('seat-selected');
+            }
+        }
+        seatInputs.forEach(input => input.addEventListener('change', () => {
+            if ([...seatInputs].filter(candidate => candidate.checked).length > 8) {
+                input.checked = false;
+                alert('Mỗi giao dịch được chọn tối đa 8 ghế.');
+                return;
+            }
+            selectCouplePartner(input);
+            input.closest('.seat').classList.toggle('seat-selected', input.checked);
+            updateSeatCount();
+        }));
+        updateSeatCount();
+    </script>
+}

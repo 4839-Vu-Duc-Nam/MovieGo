@@ -1,0 +1,95 @@
+@model MovieGoApp.Models.InvoiceModel
+@{
+    ViewData["Title"] = "Hóa đơn " + Model.Id;
+    var isPending = Model.Status == "Chờ thanh toán";
+    var isCancelled = Model.Status == "Đã hủy";
+}
+
+<p class="eyebrow">HÓA ĐƠN · @Model.Id</p>
+<h1>@(isPending ? "Xác nhận đặt vé" : "Chi tiết hóa đơn")</h1>
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<div class="invoice-card">
+    <div class="invoice-summary">
+        <div><span>Trạng thái</span><strong>@Model.Status</strong></div>
+        <div><span>Kênh bán</span><strong>@Model.Channel</strong></div>
+        <div><span>Thanh toán</span><strong>@Model.PaymentMethod</strong></div>
+        <div><span>Thời gian tạo</span><strong>@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</strong></div>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Mã vé</th><th>Phim / suất</th><th>Phòng · ghế</th><th>Trạng thái</th><th class="text-end">Giá</th></tr></thead>
+            <tbody>
+            @foreach (var ticket in Model.Tickets)
+            {
+                <tr>
+                    <td>@ticket.Id</td>
+                    <td>@ticket.MovieTitle <div class="small muted">@ticket.StartsAt.ToString("dd/MM HH:mm")</div></td>
+                    <td>@ticket.RoomName · @ticket.Seat</td>
+                    <td>@ticket.Status</td>
+                    <td class="text-end">@ticket.Price.ToString("N0") ₫</td>
+                </tr>
+            }
+            </tbody>
+            <tfoot><tr><th colspan="4" class="text-end">Tổng tiền</th><th class="text-end">@Model.Total.ToString("N0") ₫</th></tr></tfoot>
+        </table>
+    </div>
+    @if (isPending)
+    {
+        <p class="alert alert-warning" id="holdCountdown"
+           data-expires-at="@Model.HoldExpiresAt?.ToString("O")">
+            Ghế đang được giữ. Thời gian còn lại: <strong>đang tải...</strong>
+        </p>
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+            <form asp-action="Pay" method="post" id="payForm">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <p class="small muted">Mô phỏng xác nhận thanh toán; ứng dụng chưa tích hợp cổng thanh toán.</p>
+                <button class="btn btn-primary btn-lg" type="submit">Xác nhận thanh toán</button>
+            </form>
+            <form asp-action="Cancel" method="post" onsubmit="return confirm('Hủy hóa đơn và giải phóng các ghế đang giữ?');">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button class="btn btn-outline-danger" type="submit">Hủy đặt vé</button>
+            </form>
+        </div>
+    }
+
+    @if (isPending)
+    {
+        <script>
+            const countdown = document.getElementById('holdCountdown');
+            const expiresAt = Date.parse(countdown.dataset.expiresAt);
+            const display = countdown.querySelector('strong');
+            function updateHoldCountdown() {
+                const secondsLeft = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+                if (Number.isNaN(expiresAt)) {
+                    display.textContent = 'không xác định';
+                    return;
+                }
+                if (secondsLeft === 0) {
+                    display.textContent = 'đã hết hạn';
+                    document.querySelector('#payForm button[type="submit"]').disabled = true;
+                    return;
+                }
+                display.textContent = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
+            }
+            updateHoldCountdown();
+            setInterval(updateHoldCountdown, 1000);
+        </script>
+    }
+    else if (isCancelled)
+    {
+        <p class="text-danger fw-semibold">Hóa đơn đã hủy; ghế đã được giải phóng.</p>
+        <a class="btn btn-outline-primary" asp-controller="Showtimes" asp-action="Index">Tìm suất chiếu khác</a>
+    }
+    else
+    {
+        <a class="btn btn-outline-primary" asp-controller="Showtimes" asp-action="Index">Quay lại lịch chiếu</a>
+    }
+</div>

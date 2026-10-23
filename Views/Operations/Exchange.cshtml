@@ -1,0 +1,100 @@
+@model MovieGoApp.Models.ExchangePageModel
+@{
+    ViewData["Title"] = "Đổi vé";
+    var selectedShowtime = ViewData["SelectedShowtime"] as string;
+    var selectedSeat = ViewData["SelectedSeat"] as string;
+    var selectedPayment = ViewData["SelectedPaymentMethod"] as string;
+    var selectedEmployee = ViewData["SelectedEmployee"] as string;
+    var initialShowtime = Model.Showtimes.FirstOrDefault(showtime => showtime.Id != Model.Ticket.ShowtimeId);
+}
+
+<p class="eyebrow">ĐỔI SUẤT CHIẾU · @Model.Ticket.TicketId</p>
+<h1 class="mb-3">Chuyển vé sang suất khác</h1>
+<div class="ticket-summary mb-4">
+    <strong>@Model.Ticket.MovieTitle</strong>
+    <span>@Model.Ticket.StartsAt.ToString("dd/MM/yyyy HH:mm") · @Model.Ticket.RoomName · ghế @Model.Ticket.Seat</span>
+    <span>Giá vé đã mua: <b>@Model.Ticket.Price.ToString("N0") ₫</b></span>
+</div>
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+<form asp-action="Exchange" method="post" id="exchangeForm" class="checkout-panel exchange-form">
+    <input type="hidden" name="OriginalTicketId" value="@Model.Ticket.TicketId" />
+    <label class="form-label" for="NewShowtimeId">Suất chiếu mới</label>
+    <select class="form-select mb-3" id="NewShowtimeId" name="NewShowtimeId" required>
+        <option value="">Chọn suất chiếu</option>
+        @foreach (var showtime in Model.Showtimes.Where(showtime => showtime.Id != Model.Ticket.ShowtimeId))
+        {
+            <option value="@showtime.Id" selected="@(showtime.Id == selectedShowtime)">
+                @showtime.StartsAt.ToString("dd/MM HH:mm") · @showtime.MovieTitle · @showtime.RoomName · @showtime.Price.ToString("N0") ₫
+            </option>
+        }
+    </select>
+
+    <label class="form-label" for="NewSeatId">Ghế còn trống ở suất mới</label>
+    <select class="form-select mb-3" id="NewSeatId" name="NewSeatId" required data-selected-seat="@selectedSeat">
+        <option value="">Chọn suất chiếu trước</option>
+    </select>
+
+    <label class="form-label" for="DifferencePaymentMethodId">Thanh toán phần chênh lệch <span class="muted">(nếu suất mới đắt hơn)</span></label>
+    <select class="form-select mb-3" id="DifferencePaymentMethodId" name="DifferencePaymentMethodId">
+        <option value="">Không phát sinh / chọn sau</option>
+        @foreach (var method in Model.PaymentMethods)
+        {
+            <option value="@method.Id" selected="@(method.Id == selectedPayment)">@method.Name</option>
+        }
+    </select>
+
+    <label class="form-label" for="EmployeeId">Nhân viên xử lý <span class="muted">(để trống nếu tự phục vụ)</span></label>
+    <select class="form-select mb-4" id="EmployeeId" name="EmployeeId">
+        <option value="">Tự phục vụ / trực tuyến</option>
+        @foreach (var employee in Model.Employees)
+        {
+            <option value="@employee.Id" selected="@(employee.Id == selectedEmployee)">@employee.Name</option>
+        }
+    </select>
+
+    <p class="small muted">Vé mới dùng giá cao hơn giữa giá vé cũ và giá suất mới. Không hoàn phần chênh lệch nếu suất mới rẻ hơn.</p>
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Xác nhận đổi vé</button>
+        <a class="btn btn-outline-secondary" asp-action="Tickets">Quay lại</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        const showtimeSelect = document.getElementById('NewShowtimeId');
+        const seatSelect = document.getElementById('NewSeatId');
+
+        async function loadSeats() {
+            seatSelect.replaceChildren(new Option('Đang tải ghế...', ''));
+            if (!showtimeSelect.value) {
+                seatSelect.replaceChildren(new Option('Chọn suất chiếu trước', ''));
+                return;
+            }
+
+            try {
+                const response = await fetch('@Url.Action("AvailableSeats", "Operations")?showtimeId=' + encodeURIComponent(showtimeSelect.value));
+                if (!response.ok) throw new Error('Không thể tải danh sách ghế.');
+                const seats = await response.json();
+                seatSelect.replaceChildren(new Option(seats.length ? 'Chọn ghế' : 'Hết ghế', ''));
+                for (const seat of seats) {
+                    const option = new Option(seat.label, seat.id);
+                    option.selected = seat.id === seatSelect.dataset.selectedSeat;
+                    seatSelect.add(option);
+                }
+            } catch {
+                seatSelect.replaceChildren(new Option('Lỗi tải ghế — hãy thử chọn lại suất', ''));
+            }
+        }
+
+        showtimeSelect.addEventListener('change', () => {
+            seatSelect.dataset.selectedSeat = '';
+            loadSeats();
+        });
+
+        if (showtimeSelect.value) loadSeats();
+        else if (@(initialShowtime is null ? "true" : "false")) {
+            seatSelect.replaceChildren(new Option('Không có suất chiếu khác để đổi', ''));
+        }
+    </script>
+}

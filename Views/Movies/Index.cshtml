@@ -1,0 +1,36 @@
+@model IReadOnlyList<MovieGoApp.Models.MovieRow>
+@{
+    ViewData["Title"] = "Danh sách phim";
+}
+
+<div class="section-heading">
+    <div><p class="eyebrow">DANH MỤC</p><h1>Phim đang chiếu</h1></div>
+    <a class="btn btn-outline-primary" asp-controller="Showtimes" asp-action="Index">Xem lịch chiếu</a>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">Chưa có phim. Hãy chạy script MovieGo.sql để tạo dữ liệu mẫu.</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var movie in Model)
+        {
+            <div class="col-md-6 col-xl-4">
+                <article class="movie-card">
+                    <div class="movie-mark">M</div>
+                    <span class="badge text-bg-primary">@movie.AgeRating</span>
+                    <h2>@movie.Title</h2>
+                    <p class="muted">@movie.Genres</p>
+                    <dl class="movie-facts">
+                        <div><dt>Thời lượng</dt><dd>@movie.DurationMinutes phút</dd></div>
+                        <div><dt>Ngôn ngữ</dt><dd>@movie.Language</dd></div>
+                        <div><dt>Khởi chiếu</dt><dd>@(movie.ReleaseDate?.ToString("dd/MM/yyyy") ?? "Chưa cập nhật")</dd></div>
+                    </dl>
+                    <div class="card-bottom"><span class="status-pill">@movie.Status</span><span class="movie-id">@movie.Id</span></div>
+                </article>
+            </div>
+        }
+    </div>
+}

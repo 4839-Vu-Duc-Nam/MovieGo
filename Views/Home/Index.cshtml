@@ -1,0 +1,50 @@
+@model MovieGoApp.Models.DashboardModel
+@{
+    ViewData["Title"] = "Tổng quan";
+}
+
+<section class="hero-panel mb-4">
+    <p class="eyebrow">RẠP CHIẾU PHIM · MOVIEGO</p>
+    <h1>Chào mừng đến với MovieGo</h1>
+    <p class="mb-4">Tra cứu lịch chiếu, chọn ghế và quản lý vé trong một nơi.</p>
+    <a class="btn btn-light btn-lg" asp-controller="Showtimes" asp-action="Index">Đặt vé ngay</a>
+</section>
+
+@if (User.IsInRole("Admin"))
+{
+    <div class="row g-3 mb-5">
+        <div class="col-6 col-lg-3"><div class="stat-card"><span>Phim đang quản lý</span><strong>@Model.MovieCount</strong></div></div>
+        <div class="col-6 col-lg-3"><div class="stat-card"><span>Suất chiếu hôm nay</span><strong>@Model.TodayShowtimeCount</strong></div></div>
+        <div class="col-6 col-lg-3"><div class="stat-card"><span>Vé đã bán hôm nay</span><strong>@Model.SoldTicketCount</strong></div></div>
+        <div class="col-6 col-lg-3"><div class="stat-card"><span>Doanh thu hôm nay</span><strong class="revenue">@Model.TodayRevenue.ToString("N0") ₫</strong></div></div>
+    </div>
+}
+
+<div class="section-heading">
+    <div><p class="eyebrow">ĐANG MỞ BÁN</p><h2>Suất chiếu sắp tới</h2></div>
+    <a asp-controller="Showtimes" asp-action="Index">Xem tất cả <span aria-hidden="true">→</span></a>
+</div>
+
+@if (Model.UpcomingShowtimes.Count == 0)
+{
+    <div class="empty-state">Chưa có suất chiếu sắp tới. Hãy chạy script MovieGo.sql để nạp dữ liệu mẫu.</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var item in Model.UpcomingShowtimes)
+        {
+            <div class="col-md-6 col-xl-4">
+                <article class="showtime-card">
+                    <div class="showtime-date">@item.StartsAt.ToString("ddd, dd/MM · HH:mm")</div>
+                    <h3>@item.MovieTitle</h3>
+                    <p class="muted">@item.RoomName · Còn @item.AvailableSeats ghế</p>
+                    <div class="card-bottom">
+                        <strong>@item.Price.ToString("N0") ₫</strong>
+                        <a class="btn btn-primary" asp-controller="Booking" asp-action="Create" asp-route-id="@item.Id">Chọn ghế</a>
+                    </div>
+                </article>
+            </div>
+        }
+    </div>
+}

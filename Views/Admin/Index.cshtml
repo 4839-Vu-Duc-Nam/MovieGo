@@ -1,0 +1,175 @@
+@model MovieGoApp.Models.AdminPageModel
+@{
+    ViewData["Title"] = "Quản trị dữ liệu";
+}
+
+<p class="eyebrow">MOVIEGO · QUẢN TRỊ</p>
+<h1>Danh mục &amp; lịch chiếu</h1>
+<p class="muted mb-4">Để cập nhật, nhập mã hiện có; để tạo mới, để trống mã. Dữ liệu đã phát sinh giao dịch nên được ngừng hoạt động thay vì xóa.</p>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success">@success</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<div class="accordion mb-5" id="adminForms">
+    <section class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button" data-bs-toggle="collapse" data-bs-target="#movies">Phim</button></h2>
+        <div id="movies" class="accordion-collapse collapse show" data-bs-parent="#adminForms">
+            <div class="accordion-body">
+                <form asp-action="Movie" method="post" class="row g-3">
+                    @Html.AntiForgeryToken()
+                    <div class="col-md-2"><label class="form-label">Mã phim (trống = tạo)</label><input class="form-control" name="Id" maxlength="10" /></div>
+                    <div class="col-md-4"><label class="form-label">Tên phim</label><input class="form-control" name="Title" maxlength="200" required /></div>
+                    <div class="col-md-2"><label class="form-label">Thời lượng (phút)</label><input class="form-control" name="DurationMinutes" type="number" min="1" max="500" required /></div>
+                    <div class="col-md-2"><label class="form-label">Ngôn ngữ</label><input class="form-control" name="Language" maxlength="50" required /></div>
+                    <div class="col-md-2"><label class="form-label">Giới hạn tuổi</label><input class="form-control" name="AgeRating" maxlength="10" value="P" required /></div>
+                    <div class="col-md-3"><label class="form-label">Ngày khởi chiếu</label><input class="form-control" name="ReleaseDate" type="date" /></div>
+                    <div class="col-md-3"><label class="form-label">Trạng thái</label><select class="form-select" name="Status"><option>Sắp chiếu</option><option>Đang chiếu</option><option>Ngừng chiếu</option></select></div>
+                    <div class="col-md-4"><label class="form-label">Thể loại (giữ Ctrl để chọn nhiều)</label><select class="form-select" name="GenreIds" multiple size="3">@foreach (var genre in Model.Genres){<option value="@genre.Id">@genre.Name (@genre.Id)</option>}</select></div>
+                    <div class="col-md-2 align-self-end"><button class="btn btn-primary w-100">Lưu phim</button></div>
+                </form>
+                <div class="table-responsive mt-4"><table class="table table-sm align-middle"><thead><tr><th>Mã</th><th>Tên phim</th><th>Thời lượng</th><th>Ngôn ngữ</th><th>Tuổi</th><th>Thể loại</th><th>Trạng thái</th></tr></thead><tbody>
+                @foreach (var movie in Model.Movies){<tr><td>@movie.Id</td><td>@movie.Title</td><td>@movie.DurationMinutes phút</td><td>@movie.Language</td><td>@movie.AgeRating</td><td>@movie.Genres</td><td>@movie.Status</td></tr>}
+                </tbody></table></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#genres">Thể loại</button></h2>
+        <div id="genres" class="accordion-collapse collapse" data-bs-parent="#adminForms"><div class="accordion-body">
+            <form asp-action="Genre" method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <div class="col-md-2"><label class="form-label">Mã (trống = tạo)</label><input class="form-control" name="Id" maxlength="10" /></div>
+                <div class="col-md-4"><label class="form-label">Tên</label><input class="form-control" name="Name" maxlength="100" required /></div>
+                <div class="col-md-4"><label class="form-label">Mô tả</label><input class="form-control" name="Description" maxlength="500" /></div>
+                <div class="col-md-2 align-self-end"><button class="btn btn-primary w-100">Lưu thể loại</button></div>
+            </form>
+            <p class="small muted mt-3">@string.Join(" · ", Model.Genres.Select(x => $"{x.Id}: {x.Name}"))</p>
+        </div></div>
+    </section>
+
+    <section class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#rooms">Phòng chiếu &amp; ghế</button></h2>
+        <div id="rooms" class="accordion-collapse collapse" data-bs-parent="#adminForms"><div class="accordion-body">
+            <h3 class="h5">Phòng chiếu</h3>
+            <form asp-action="Room" method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <div class="col-md-2"><label class="form-label">Mã (trống = tạo)</label><input class="form-control" name="Id" maxlength="10" /></div>
+                <div class="col-md-4"><label class="form-label">Tên phòng</label><input class="form-control" name="Name" maxlength="100" required /></div>
+                <div class="col-md-3"><label class="form-label">Loại phòng</label><input class="form-control" name="Type" maxlength="50" value="2D" required /></div>
+                <div class="col-md-2"><label class="form-label">Trạng thái</label><select class="form-select" name="Status"><option>Hoạt động</option><option>Bảo trì</option><option>Ngừng hoạt động</option></select></div>
+                <div class="col-md-1 align-self-end"><button class="btn btn-primary">Lưu</button></div>
+            </form>
+            <div class="table-responsive mt-3"><table class="table table-sm"><thead><tr><th>Mã</th><th>Phòng</th><th>Loại</th><th>Số ghế</th><th>Trạng thái</th></tr></thead><tbody>@foreach (var room in Model.Rooms){<tr><td>@room.Id</td><td>@room.Name</td><td>@room.Type</td><td>@room.SeatCount / 150 @if (room.SeatCount is < 80 or > 150){<span class="text-warning"> (ngoài mức khuyến nghị 80–150)</span>}</td><td>@room.Status</td></tr>}</tbody></table></div>
+
+            <hr /><h3 class="h5">Ghế</h3>
+            <form asp-action="Seat" method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <div class="col-md-2"><label class="form-label">Mã (trống = tạo)</label><input class="form-control" name="Id" maxlength="10" /></div>
+                <div class="col-md-3"><label class="form-label">Phòng</label><select class="form-select" name="RoomId" required>@foreach (var room in Model.Rooms){<option value="@room.Id">@room.Name (@room.Id)</option>}</select></div>
+                <div class="col-md-2"><label class="form-label">Hàng</label><input class="form-control" name="Row" maxlength="5" required /></div>
+                <div class="col-md-2"><label class="form-label">Số ghế</label><input class="form-control" name="Number" type="number" min="1" max="500" required /></div>
+                <div class="col-md-2"><label class="form-label">Loại ghế</label><select class="form-select" name="Type"><option>Thường</option><option>VIP</option></select></div>
+                <div class="col-md-2"><label class="form-label">Trạng thái</label><select class="form-select" name="Status"><option>Hoạt động</option><option>Ngừng hoạt động</option></select></div>
+                <div class="col-md-2 align-self-end"><button class="btn btn-primary">Lưu ghế</button></div>
+            </form>
+            <div class="table-responsive mt-3"><table class="table table-sm"><thead><tr><th>Mã</th><th>Phòng</th><th>Vị trí</th><th>Loại</th><th>Trạng thái</th></tr></thead><tbody>@foreach (var seat in Model.Seats){<tr><td>@seat.Id</td><td>@seat.RoomName</td><td>@seat.Row@seat.Number</td><td>@seat.Type</td><td>@seat.Status</td></tr>}</tbody></table></div>
+            <hr /><h3 class="h5">Tạo nhiều ghế cùng lúc</h3>
+            <p class="small muted">Khuyến nghị 80–150 ghế/phòng. Ví dụ sơ đồ 100 ghế: tạo A-D loại Thường (4×10), E-I loại VIP (5×10), rồi J loại Đôi (1×10, ghế theo cặp 1-2, 3-4...). Ghế đôi chỉ được tạo ở hàng cuối. Vị trí đã có sẽ được bỏ qua.</p>
+            <form asp-action="GenerateSeats" method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <div class="col-md-3"><label class="form-label">Phòng</label><select class="form-select" name="RoomId" required>@foreach (var room in Model.Rooms){<option value="@room.Id">@room.Name (@room.Id)</option>}</select></div>
+                <div class="col-md-3"><label class="form-label">Các hàng</label><input class="form-control" name="Rows" maxlength="100" value="A,B,C,D,E,F" required /></div>
+                <div class="col-md-2"><label class="form-label">Ghế mỗi hàng</label><input class="form-control" name="SeatsPerRow" type="number" min="1" max="100" value="10" required /></div>
+                <div class="col-md-2"><label class="form-label">Số ghế bắt đầu</label><input class="form-control" name="FirstNumber" type="number" min="1" value="1" required /></div>
+                <div class="col-md-2"><label class="form-label">Loại ghế</label><select class="form-select" name="Type"><option>Thường</option><option>VIP</option><option>Đôi</option></select></div>
+                <div class="col-12"><button class="btn btn-primary">Tạo sơ đồ ghế</button></div>
+            </form>
+        </div></div>
+    </section>
+
+    <section class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#showtimes">Suất chiếu</button></h2>
+        <div id="showtimes" class="accordion-collapse collapse" data-bs-parent="#adminForms"><div class="accordion-body">
+            <form asp-action="Showtime" method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <div class="col-md-2"><label class="form-label">Mã (trống = tạo)</label><input class="form-control" name="Id" maxlength="10" /></div>
+                <div class="col-md-3"><label class="form-label">Phim</label><select class="form-select" name="MovieId" required>@foreach (var movie in Model.Movies){<option value="@movie.Id">@movie.Title (@movie.Id)</option>}</select></div>
+                <div class="col-md-2"><label class="form-label">Phòng</label><select class="form-select" name="RoomId" required>@foreach (var room in Model.Rooms){<option value="@room.Id">@room.Name (@room.Id)</option>}</select></div>
+                <div class="col-md-2"><label class="form-label">Bắt đầu</label><input class="form-control" name="StartsAt" type="datetime-local" required /></div>
+                <div class="col-md-2"><label class="form-label">Kết thúc</label><input class="form-control" name="EndsAt" type="datetime-local" required /></div>
+                <div class="col-md-2"><label class="form-label">Giá vé</label><input class="form-control" name="Price" type="number" min="0" step="1000" required /></div>
+                <div class="col-md-2"><label class="form-label">Giá VIP</label><input class="form-control" name="VipPrice" type="number" min="0" step="1000" required /></div>
+                <div class="col-md-2"><label class="form-label">Giá ghế đôi (mỗi ghế)</label><input class="form-control" name="CouplePrice" type="number" min="0" step="1000" required /></div>
+                <div class="col-md-2"><label class="form-label">Trạng thái</label><select class="form-select" name="Status"><option>Sắp chiếu</option><option>Đang chiếu</option><option>Đã chiếu</option><option>Đã hủy</option></select></div>
+                <div class="col-md-6 align-self-end"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="BlockFrontAndCorners" value="true" id="BlockFrontAndCorners" /><label class="form-check-label" for="BlockFrontAndCorners">Suất vắng: khóa hàng A–B và 2 ghế ở mỗi đầu của các hàng</label></div></div>
+                <div class="col-md-2 align-self-end"><button class="btn btn-primary">Lưu suất chiếu</button></div>
+            </form>
+            <div class="table-responsive mt-3"><table class="table table-sm align-middle"><thead><tr><th>Mã</th><th>Phim</th><th>Phòng</th><th>Bắt đầu</th><th>Kết thúc</th><th>Thường</th><th>VIP</th><th>Đôi (mỗi ghế)</th><th>Trạng thái / thao tác</th></tr></thead><tbody>
+            @foreach (var showtime in Model.Showtimes)
+            {
+                <tr>
+                    <td>@showtime.Id</td><td>@showtime.MovieTitle</td><td>@showtime.RoomName</td>
+                    <td>@showtime.StartsAt.ToString("dd/MM/yyyy HH:mm")</td><td>@showtime.EndsAt.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@showtime.Price.ToString("N0") ₫</td><td>@showtime.VipPrice.ToString("N0") ₫</td><td>@showtime.CouplePrice.ToString("N0") ₫</td>
+                    <td>
+                        <span>@showtime.Status</span>
+                        @if (showtime.BlockFrontAndCorners)
+                        {
+                            <div class="small text-warning">Khóa hàng A–B và 2 ghế mỗi đầu hàng</div>
+                        }
+                        @if (showtime.Status != "Đã hủy")
+                        {
+                            <form asp-action="CancelShowtime" method="post" class="d-flex flex-wrap gap-2 mt-2" onsubmit="return confirm('Hủy suất chiếu này? Vé đang giữ hoặc đã bán sẽ được xử lý theo chính sách hủy suất.');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="showtimeId" value="@showtime.Id" />
+                                <select class="form-select form-select-sm" name="employeeId" required aria-label="Nhân viên thực hiện">
+                                    <option value="">Nhân viên</option>
+                                    @foreach (var employee in Model.Employees.Where(x => x.Status == "Đang làm")){<option value="@employee.Id">@employee.Name</option>}
+                                </select>
+                                <input class="form-control form-control-sm" name="reason" maxlength="300" value="Rạp hủy suất chiếu" required aria-label="Lý do hủy" />
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Hủy suất</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody></table></div>
+        </div></div>
+    </section>
+
+    <section class="accordion-item">
+        <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#people">Khách hàng &amp; nhân viên</button></h2>
+        <div id="people" class="accordion-collapse collapse" data-bs-parent="#adminForms"><div class="accordion-body">
+            <h3 class="h5">Khách hàng</h3>
+            <form asp-action="Customer" method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <div class="col-md-2"><label class="form-label">Mã (trống = tạo)</label><input class="form-control" name="Id" maxlength="10" /></div>
+                <div class="col-md-3"><label class="form-label">Họ tên</label><input class="form-control" name="Name" maxlength="150" required /></div>
+                <div class="col-md-2"><label class="form-label">Điện thoại</label><input class="form-control" name="Phone" maxlength="20" /></div>
+                <div class="col-md-3"><label class="form-label">Email</label><input class="form-control" name="Email" type="email" maxlength="254" /></div>
+                <div class="col-md-2"><label class="form-label">Ngày sinh</label><input class="form-control" name="BirthDate" type="date" /></div>
+                <div class="col-md-2"><button class="btn btn-primary">Lưu khách hàng</button></div>
+            </form>
+            <div class="table-responsive mt-3"><table class="table table-sm"><thead><tr><th>Mã</th><th>Họ tên</th><th>Điện thoại</th><th>Email</th><th>Ngày sinh</th></tr></thead><tbody>@foreach (var customer in Model.Customers){<tr><td>@customer.Id</td><td>@customer.Name</td><td>@customer.Phone</td><td>@customer.Email</td><td>@customer.BirthDate?.ToString("dd/MM/yyyy")</td></tr>}</tbody></table></div>
+            <hr /><h3 class="h5">Nhân viên</h3>
+            <form asp-action="Employee" method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <div class="col-md-2"><label class="form-label">Mã (trống = tạo)</label><input class="form-control" name="Id" maxlength="10" /></div>
+                <div class="col-md-3"><label class="form-label">Họ tên</label><input class="form-control" name="Name" maxlength="150" required /></div>
+                <div class="col-md-2"><label class="form-label">Điện thoại</label><input class="form-control" name="Phone" maxlength="20" /></div>
+                <div class="col-md-3"><label class="form-label">Email</label><input class="form-control" name="Email" type="email" maxlength="254" /></div>
+                <div class="col-md-2"><label class="form-label">Chức vụ</label><input class="form-control" name="Role" maxlength="50" value="Thu ngân" required /></div>
+                <div class="col-md-2"><label class="form-label">Trạng thái</label><select class="form-select" name="Status"><option>Đang làm</option><option>Ngừng làm</option></select></div>
+                <div class="col-md-2"><button class="btn btn-primary">Lưu nhân viên</button></div>
+            </form>
+            <div class="table-responsive mt-3"><table class="table table-sm"><thead><tr><th>Mã</th><th>Họ tên</th><th>Điện thoại</th><th>Email</th><th>Chức vụ</th><th>Trạng thái</th></tr></thead><tbody>@foreach (var employee in Model.Employees){<tr><td>@employee.Id</td><td>@employee.Name</td><td>@employee.Phone</td><td>@employee.Email</td><td>@employee.Role</td><td>@employee.Status</td></tr>}</tbody></table></div>
+        </div></div>
+    </section>
+</div>

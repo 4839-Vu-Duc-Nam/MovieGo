@@ -1,0 +1,55 @@
+@model MovieGoApp.Models.ReportPageModel
+@{
+    ViewData["Title"] = "Báo cáo doanh thu";
+}
+
+<div class="section-heading">
+    <div><p class="eyebrow">BÁO CÁO</p><h1>Doanh thu rạp</h1></div>
+    <a class="btn btn-outline-primary" asp-action="Tickets">Quản lý vé</a>
+</div>
+<form method="get" class="report-filter">
+    <div>
+        <label class="form-label" for="from">Từ ngày</label>
+        <input class="form-control" id="from" name="from" type="date" value="@Model.From.ToString("yyyy-MM-dd")" />
+    </div>
+    <div>
+        <label class="form-label" for="to">Đến ngày</label>
+        <input class="form-control" id="to" name="to" type="date" value="@Model.To.ToString("yyyy-MM-dd")" />
+    </div>
+    <div>
+        <label class="form-label" for="groupBy">Tổng hợp theo</label>
+        <select class="form-select" id="groupBy" name="groupBy">
+            <option value="date" selected="@(Model.GroupBy == "date")">Ngày</option>
+            <option value="movie" selected="@(Model.GroupBy == "movie")">Phim</option>
+            <option value="showtime" selected="@(Model.GroupBy == "showtime")">Suất chiếu</option>
+            <option value="employee" selected="@(Model.GroupBy == "employee")">Nhân viên</option>
+        </select>
+    </div>
+    <button class="btn btn-primary align-self-end" type="submit">Xem báo cáo</button>
+</form>
+
+<div class="row g-3 my-3">
+    <div class="col-6 col-lg-3"><div class="stat-card"><span>Vé đã bán</span><strong>@Model.TotalTickets</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card"><span>Doanh thu vé</span><strong class="revenue">@Model.TotalTicketRevenue.ToString("N0") ₫</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card"><span>Phí xử lý đã thu</span><strong class="revenue">@Model.TotalProcessingFees.ToString("N0") ₫</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card"><span>Doanh thu thuần</span><strong class="revenue">@Model.TotalNetRevenue.ToString("N0") ₫</strong></div></div>
+</div>
+
+<div class="table-responsive operation-table">
+    <table class="table align-middle">
+        <thead><tr><th>@Model.GroupLabel</th><th class="text-end">Vé đã bán</th><th class="text-end">Doanh thu vé</th><th class="text-end">Phí xử lý</th><th class="text-end">Doanh thu thuần</th></tr></thead>
+        <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr>
+                <td>@row.Label</td>
+                <td class="text-end">@row.TicketCount</td>
+                <td class="text-end">@row.TicketRevenue.ToString("N0") ₫</td>
+                <td class="text-end">@row.ProcessingFees.ToString("N0") ₫</td>
+                <td class="text-end fw-bold">@row.NetRevenue.ToString("N0") ₫</td>
+            </tr>
+        }
+        </tbody>
+        <tfoot><tr><th>Tổng</th><th class="text-end">@Model.TotalTickets</th><th class="text-end">@Model.TotalTicketRevenue.ToString("N0") ₫</th><th class="text-end">@Model.TotalProcessingFees.ToString("N0") ₫</th><th class="text-end">@Model.TotalNetRevenue.ToString("N0") ₫</th></tr></tfoot>
+    </table>
+</div>

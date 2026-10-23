@@ -1,0 +1,37 @@
+@model IReadOnlyList<MovieGoApp.Models.ShowtimeRow>
+@{
+    ViewData["Title"] = "Lịch chiếu";
+}
+
+<p class="eyebrow">LỊCH CHIẾU</p>
+<h1 class="mb-4">Chọn suất chiếu phù hợp</h1>
+@if (Model.Count == 0)
+{
+    <div class="empty-state">Hiện chưa có suất chiếu mở bán trong tương lai.</div>
+}
+else
+{
+    <div class="showtime-list">
+        @foreach (var item in Model)
+        {
+            <article class="showtime-card showtime-row">
+                <div class="showtime-date">@item.StartsAt.ToString("ddd, dd/MM/yyyy")<strong>@item.StartsAt.ToString("HH:mm")</strong></div>
+                <div class="showtime-info">
+                    <h2>@item.MovieTitle</h2>
+                    <p class="muted">@item.RoomName · Kết thúc @item.EndsAt.ToString("HH:mm") · @item.AvailableSeats ghế trống</p>
+                </div>
+                <div class="showtime-action">
+                    <strong>@item.Price.ToString("N0") ₫</strong>
+                    @if (item.AvailableSeats > 0)
+                    {
+                        <a class="btn btn-primary" asp-controller="Booking" asp-action="Create" asp-route-id="@item.Id">Chọn ghế</a>
+                    }
+                    else
+                    {
+                        <button class="btn btn-secondary" disabled>Hết ghế</button>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+}

@@ -1,0 +1,199 @@
+@model MovieGoApp.Models.CounterSalePageModel
+@{
+    ViewData["Title"] = "Bán vé tại quầy";
+    var selectedShowtime = ViewData["SelectedShowtime"] as string;
+    var selectedCustomer = ViewData["SelectedCustomer"] as string;
+    var selectedEmployee = ViewData["SelectedEmployee"] as string;
+    var selectedPayment = ViewData["SelectedPaymentMethod"] as string;
+    var selectedSeats = ViewData["SelectedSeats"] as List<string> ?? [];
+    var acceptedSeparatedSeats = ViewData["AcceptSeparatedSeats"] is bool accepted && accepted;
+}
+
+<p class="eyebrow">MOVIEGO · QUẦY VÉ</p>
+<h1>Bán vé tại quầy</h1>
+<p class="muted mb-4">Chọn suất và ghế còn trống. Hóa đơn được ghi nhận đã thanh toán ngay khi giao dịch thành công.</p>
+@if (TempData["Success"] is string success){<div class="alert alert-success">@success</div>}
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+<form asp-action="Index" method="post" id="counterSaleForm" class="booking-layout">
+    @Html.AntiForgeryToken()
+    <section class="seat-panel">
+        <label class="form-label" for="ShowtimeId">Suất chiếu</label>
+        <select class="form-select mb-3" id="ShowtimeId" name="ShowtimeId" required>
+            <option value="">Chọn suất chiếu</option>
+            @foreach (var showtime in Model.Showtimes)
+            {
+                <option value="@showtime.Id" selected="@(selectedShowtime == showtime.Id)">
+                    @showtime.StartsAt.ToString("dd/MM HH:mm") · @showtime.MovieTitle · @showtime.RoomName · @showtime.AvailableSeats ghế · @showtime.Price.ToString("N0") ₫
+                </option>
+            }
+        </select>
+        <div class="screen-label">MÀN HÌNH</div><div class="screen-curve"></div>
+        <div class="seat-legend" id="seatLegend"><span><i class="seat-dot selected"></i> Đang chọn</span><span><i class="seat-dot taken"></i> Đã giữ/bán</span></div>
+        <div class="seat-map" id="seatGrid"><p class="muted">Chọn suất chiếu để tải sơ đồ ghế.</p></div>
+        <p class="small muted mt-2">Không để lại một ghế đơn ở giữa hoặc hai đầu hàng. Hai đầu hàng được xem là cạnh lối đi.</p>
+        <p class="small muted mt-3">Tối đa 8 ghế/giao dịch. Đã chọn: <strong id="selectedSeatCount">0 ghế</strong></p>
+    </section>
+    <aside class="checkout-panel">
+        <h2>Thông tin giao dịch</h2>
+        <label class="form-label" for="EmployeeId">Nhân viên</label>
+        <select class="form-select mb-3" id="EmployeeId" name="EmployeeId" required>
+            <option value="">Chọn nhân viên</option>
+            @foreach (var employee in Model.Employees){<option value="@employee.Id" selected="@(selectedEmployee == employee.Id)">@employee.Name</option>}
+        </select>
+        <label class="form-label" for="CustomerId">Khách hàng <span class="muted">(không bắt buộc)</span></label>
+        <select class="form-select mb-3" id="CustomerId" name="CustomerId">
+            <option value="">Khách vãng lai</option>
+            @foreach (var customer in Model.Customers){<option value="@customer.Id" selected="@(selectedCustomer == customer.Id)">@customer.Name</option>}
+        </select>
+        <label class="form-label" for="PaymentMethodId">Thanh toán</label>
+        <select class="form-select mb-3" id="PaymentMethodId" name="PaymentMethodId" required>
+            <option value="">Chọn hình thức thanh toán</option>
+            @foreach (var method in Model.PaymentMethods){<option value="@method.Id" selected="@(selectedPayment == method.Id)">@method.Name</option>}
+        </select>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="AcceptSeparatedSeats" value="true" id="AcceptSeparatedSeats" checked="@acceptedSeparatedSeats" />
+            <label class="form-check-label small" for="AcceptSeparatedSeats">Đồng ý chọn ghế rời nếu không còn cụm liền nhau phù hợp.</label>
+        </div>
+        <p class="small muted">Chỉ hiển thị phương thức được cấu hình cho kênh quầy.</p>
+        <button class="btn btn-primary w-100 btn-lg" type="submit">Hoàn tất bán vé</button>
+    </aside>
+</form>
+
+@section Scripts {
+<script>
+    const showtime = document.getElementById('ShowtimeId');
+    const seatGrid = document.getElementById('seatGrid');
+    const seatLegend = document.getElementById('seatLegend');
+    const seatCount = document.getElementById('selectedSeatCount');
+    const initiallySelected = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(selectedSeats));
+    const selectedShowtime = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(selectedShowtime));
+    async function loadSeats() {
+        seatGrid.replaceChildren();
+        updateSeatCount();
+        if (!showtime.value) {
+            seatGrid.innerHTML = '<p class="muted">Chọn suất chiếu để tải sơ đồ ghế.</p>';
+            return;
+        }
+        const response = await fetch(`/CounterSales/AvailableSeats?showtimeId=${encodeURIComponent(showtime.value)}`);
+        if (!response.ok) {
+            seatGrid.innerHTML = '<p class="text-danger">Không tải được sơ đồ ghế. Vui lòng thử tải lại trang.</p>';
+            return;
+        }
+        const seats = await response.json();
+        seatLegend.querySelectorAll('[data-tier]').forEach(entry => entry.remove());
+        const tierPrices = new Map();
+        if (seats.some(seat => seat.isRestricted)) {
+            const icon = document.createElement('i');
+            icon.className = 'seat-dot restricted';
+            const entry = document.createElement('span');
+            entry.dataset.tier = 'restricted';
+            entry.append(icon, document.createTextNode(' Khóa theo chính sách suất vắng'));
+            seatLegend.prepend(entry);
+        }
+        for (const seat of seats) {
+            if (!tierPrices.has(seat.type)) tierPrices.set(seat.type, seat.price);
+        }
+        for (const [type, price] of tierPrices) {
+            const icon = document.createElement('i');
+            icon.className = `seat-dot${type.toLowerCase().includes('vip') ? ' vip' : type === 'Đôi' ? ' couple' : ' available'}`;
+            const entry = document.createElement('span');
+            entry.dataset.tier = type;
+            entry.append(icon, document.createTextNode(` ${type} · ${Number(price).toLocaleString('vi-VN')} ₫/ghế`));
+            seatLegend.prepend(entry);
+        }
+        if (!seats.some(seat => seat.isAvailable)) {
+            seatGrid.innerHTML = '<p class="muted">Suất chiếu hiện không còn ghế trống.</p>';
+            return;
+        }
+        const rows = new Map();
+        for (const seat of seats) {
+            if (!rows.has(seat.row)) rows.set(seat.row, []);
+            rows.get(seat.row).push(seat);
+        }
+        for (const [rowName, rowSeats] of rows) {
+            const row = document.createElement('div');
+            row.className = 'seat-row';
+            const rowLabel = document.createElement('span');
+            rowLabel.className = 'seat-row-label';
+            rowLabel.textContent = rowName;
+            const oppositeLabel = rowLabel.cloneNode(true);
+            const items = document.createElement('div');
+            items.className = 'seat-row-items';
+            for (const seat of rowSeats) {
+                const label = document.createElement('label');
+                const isVip = seat.type.toLowerCase().includes('vip');
+                const isCouple = seat.type === 'Đôi';
+                label.className = `seat${isVip ? ' seat-vip' : ''}${isCouple ? ' seat-couple' : ''}${seat.isRestricted ? ' seat-restricted' : seat.isAvailable ? '' : ' seat-unavailable'}`;
+                label.title = seat.isRestricted
+                    ? `${seat.row}${seat.number} · Tạm khóa theo chính sách suất vắng`
+                    : `${seat.row}${seat.number} · ${seat.type} · ${Number(seat.price).toLocaleString('vi-VN')} ₫${seat.isAvailable ? '' : ' · Đã giữ/bán'}`;
+                const text = document.createElement('span');
+                text.textContent = seat.number;
+                if (seat.isAvailable) {
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.name = 'SeatIds';
+                    checkbox.value = seat.id;
+                    checkbox.checked = showtime.value === selectedShowtime && initiallySelected.includes(seat.id);
+                    checkbox.dataset.seatType = seat.type;
+                    checkbox.dataset.row = seat.row;
+                    checkbox.dataset.number = seat.number;
+                    checkbox.dataset.price = String(seat.price);
+                    checkbox.addEventListener('change', () => {
+                        if (seatGrid.querySelectorAll('input[name="SeatIds"]:checked').length > 8) {
+                            checkbox.checked = false;
+                            alert('Mỗi giao dịch được chọn tối đa 8 ghế.');
+                            updateSeatCount();
+                            return;
+                        }
+                        selectCouplePartner(checkbox);
+                        label.classList.toggle('seat-selected', checkbox.checked);
+                        updateSeatCount();
+                    });
+                    label.append(checkbox, text);
+                    if (checkbox.checked) label.classList.add('seat-selected');
+                } else {
+                    label.append(text);
+                }
+                items.append(label);
+            }
+            row.append(rowLabel, items, oppositeLabel);
+            seatGrid.append(row);
+        }
+        updateSeatCount();
+    }
+
+    function updateSeatCount() {
+        const selected = [...seatGrid.querySelectorAll('input[name="SeatIds"]:checked')];
+        const total = selected.reduce((sum, input) => sum + Number(input.dataset.price), 0);
+        seatCount.textContent = `${selected.length} ghế · ${total.toLocaleString('vi-VN')} ₫`;
+    }
+
+    function selectCouplePartner(input) {
+        if (input.dataset.seatType !== 'Đôi') return;
+        const partnerNumber = Number(input.dataset.number) % 2 === 1
+            ? Number(input.dataset.number) + 1 : Number(input.dataset.number) - 1;
+        const partner = [...seatGrid.querySelectorAll('input[name="SeatIds"]')].find(candidate =>
+            candidate.dataset.row === input.dataset.row
+            && Number(candidate.dataset.number) === partnerNumber);
+        if (input.checked && !partner) {
+            input.checked = false;
+            alert('Ghế đôi phải có đủ hai ghế liền nhau.');
+            return;
+        }
+        if (input.checked && seatGrid.querySelectorAll('input[name="SeatIds"]:checked').length > 7) {
+            input.checked = false;
+            alert('Mỗi giao dịch được chọn tối đa 8 ghế.');
+            return;
+        }
+        if (partner) {
+            partner.checked = input.checked;
+            partner.closest('.seat').classList.toggle('seat-selected', input.checked);
+        }
+    }
+
+    showtime.addEventListener('change', loadSeats);
+    loadSeats();
+</script>
+}

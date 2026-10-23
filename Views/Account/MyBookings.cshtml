@@ -1,0 +1,36 @@
+@model IReadOnlyList<MovieGoApp.Models.CustomerInvoiceRow>
+@{
+    ViewData["Title"] = "Vé của tôi";
+}
+
+<div class="section-heading">
+    <div><p class="eyebrow">TÀI KHOẢN KHÁCH HÀNG</p><h1>Vé của tôi</h1></div>
+    <a class="btn btn-primary" asp-controller="Showtimes" asp-action="Index">Đặt vé</a>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">Bạn chưa có hóa đơn nào. <a asp-controller="Showtimes" asp-action="Index">Chọn suất chiếu để đặt vé</a>.</div>
+}
+else
+{
+    <div class="table-responsive bg-white rounded-3 p-3">
+        <table class="table align-middle">
+            <thead><tr><th>Mã hóa đơn</th><th>Phim</th><th>Suất chiếu</th><th>Ngày đặt</th><th>Trạng thái</th><th class="text-end">Tổng tiền</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var invoice in Model)
+            {
+                <tr>
+                    <td>@invoice.Id</td>
+                    <td>@invoice.MovieTitle</td>
+                    <td>@(invoice.Showtime?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                    <td>@invoice.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@invoice.Status</td>
+                    <td class="text-end">@invoice.Total.ToString("N0") ₫</td>
+                    <td><a asp-controller="Booking" asp-action="Invoice" asp-route-id="@invoice.Id">Chi tiết</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
